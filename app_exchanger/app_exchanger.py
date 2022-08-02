@@ -78,3 +78,8 @@ def create_deposit(deposit_id):
 def deposit_info_currency(currency_name):
     # шнформація про дипозит у вказаній валюті
     return f"Info about deposit in {currency_name}"
+
+
+if __name__ == '__main__':
+    app.run()
+
