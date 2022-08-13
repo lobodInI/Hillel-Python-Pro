@@ -1,82 +1,95 @@
 from flask import Flask, request
+import sqlite3
+
 
 app = Flask(__name__)
 
-@app.route("/")
-def hello_world():
-    return "<p>Hello, World!</p>"
+
+def get_data(query: str):
+    with sqlite3.connect('databases_exchanger.db') as db:
+        cursor = db.cursor()
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
 
 
-@app.route('/currency/<currency_name>/review', methods=['GET', 'DELETE', 'POST', 'PUT'])
-def review(currency_name):
-    # дозволяє працювати з відкуками конкретної валюти
-    if request.method == 'DELETE':
-        return f'Delete {currency_name} currency review'
+
+@app.route('/currency/<currency_rev>/review', methods=['GET', 'DELETE', 'POST', 'PUT'])     # дозволяє працювати з відкуками конкретної валюти
+def review_currency(currency_rev):
+    if request.method == 'GET':
+        res = get_data(f"SELECT balance FROM Account WHERE user_id='{currency_rev}'")
+        return res
+    elif request.method == 'DELETE':
+        return f'DELETE a review for {currency_rev} currency'
     elif request.method == 'POST':
-        return f'Create a review for {currency_name} currency'
-    elif request.method == 'PUT':
-        return f'Update Currency Review {currency_name}'
+        return f'Create a review for {currency_rev} currency'
     else:
-        return f'all reviews about {currency_name} currency'
+        return f'Update Currency Review {currency_rev}'
 
 
-@app.route('/currency/<currency_name>')
+@app.get('/currency/<currency_name>')     # показує інформацію стосовно однієї валюти
 def show_info_currency(currency_name):
-    # показує інформацію стосовно однієї валюти
-    return f'Currency: {currency_name}'
+    conn = sqlite3.connect('Databases_exchanger.db')
+    cursor = conn.execute(f"SELECT * FROM Currency")
+    result = cursor.fetchall()
+    conn.close()
+    return result
 
 
-@app.get('/currency/trade/<currency_name1>/<currency_name2>')
+@app.get('/currency/trade_ratio/<currency_name1>/<currency_name2>')    # відображає співвідношення двох валют
 def trade_get_ratio(currency_name1, currency_name2):
-    # відображає співвідношення двох валют
+
     return f"Ratio of currency - {currency_name1}/{currency_name2}"
 
 
-@app.post('/currency/trade/<currency_name1>/<currency_name2>')
+@app.post('/currency/trade/<currency_name1>/<currency_name2>')    # операція обміну однієї валюти на другу
 def trade_exchange(currency_name1, currency_name2):
-    # операція обміну однієї валюти на другу
+
     return f"Exchange currency - {currency_name1}/{currency_name2}"
 
 
-@app.route('/currency')
+@app.get('/currency')    # список всіх валют
 def all_currency():
-    # список всіх валют
-    return "List of all currencies"
+    conn = sqlite3.connect('databases_exchanger.db')
+    cursor = conn.execute("SELECT * FROM Currency")
+    result = cursor.fetchall()
+    conn.close()
+    return result
 
 
-@app.route('/user')
+@app.route('/user')    # інформація про користувача
 def user_info():
-    # інформація про користувача
+
     return "All information about the user"
 
 
-@app.post('/user/transfer')
+@app.post('/user/transfer')    # переказ коштів
 def transfer_currency_user():
-    # переказ коштів
+
     return "User currency transaction"
 
 
-@app.route('/user/history')
+@app.route('/user/history')    # історія переказів користувача
 def user_transaction_history():
-    # історія переказів користувача
+
     return "User transaction history"
 
 
-@app.route('/user/deposit')
+@app.route('/user/deposit')    # шнформфція про дипозит користувача
 def deposit_user():
-    # шнформфція про дипозит користувача
+
     return 'User Deposit info'
 
 
-@app.post('/user/deposit/<deposit_id>')
+@app.post('/user/deposit/<deposit_id>')    # створення дипозиту
 def create_deposit(deposit_id):
-    # створення дипозиту
+
     return f"user deposit in currency {deposit_id}"
 
 
-@app.route('/deposit/<currency_name>')
+@app.route('/deposit/<currency_name>')    # шнформація про дипозит у вказаній валюті
 def deposit_info_currency(currency_name):
-    # шнформація про дипозит у вказаній валюті
+
     return f"Info about deposit in {currency_name}"
 
 
