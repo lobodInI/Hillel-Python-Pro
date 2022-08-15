@@ -34,7 +34,7 @@ def review_currency(currency_name):                                             
         result = get_data(f"""SELECT name_currency, rating, review_client, date_review 
         FROM Review JOIN Currency on Currency.id_currency=Review.id_currency 
         WHERE name_currency='{currency_name.upper()}'""")
-        if len(result) == 0:
+        if not result:
             return f'Відгуків по данній валюті {currency_name} не знайдено'
         else:
             return result
@@ -43,7 +43,7 @@ def review_currency(currency_name):                                             
 @app.route('/currency/<currency_name>')     # показує інформацію стосовно однієї валюти
 def show_info_currency(currency_name):      # format currency name: XXX
     result = get_data(f"SELECT * FROM Currency WHERE name_currency='{currency_name.upper()}'")
-    if len(result) == 0:
+    if not result:
         return f'Дані про валюту {currency_name} не знайдено'
     else:
         return result
@@ -74,7 +74,7 @@ def trade_exchange(currency_name1, currency_name2):
 def user_info(login):
     result = get_data(f"""SELECT login, name_currency, balance FROM Currency JOIN Account, User 
     on Currency.id_currency=Account.id_currency AND User.id=Account.user_id WHERE login='{login}'""")
-    if len(result) == 0:
+    if not result:
         return f'Дані про користувача {login} не знайдено'
     else:
         return result
@@ -91,7 +91,7 @@ def user_transaction_history(login):
     result = get_data(f"""SELECT type_operation, id_currency_output, count_currency_spent, id_currency_input, 
     count_currency_received, commission, date_operation From Transactions JOIN User on 
     User.id=Transactions.user_id WHERE login='{login}'""")
-    if len(result) == 0:
+    if not result:
         return f'Дані про користувача {login} не знайдено'
     else:
         return result
@@ -101,7 +101,7 @@ def deposit_user(login):
     result = get_data(f"""SELECT login, name_currency, balance, opening_date, closing_date, interest_rate, 
     storage_conditions FROM Deposit JOIN User, Currency on Deposit.user_id=User.id AND 
     Deposit.id_currency=Currency.id_currency WHERE login='{login}'""")
-    if len(result) == 0:
+    if not result:
         return f'Дані про дипозит користувача {login} не знайдено'
     else:
         return result
