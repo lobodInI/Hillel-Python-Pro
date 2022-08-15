@@ -53,15 +53,16 @@ def show_info_currency(currency_name):      # format currency name: XXX
 def trade_get_ratio(currency_name1, currency_name2):
     name_check1 = get_data(f"SELECT cost_in_USD FROM Currency WHERE name_currency='{currency_name1.upper()}'")
     name_check2 = get_data(f"SELECT cost_in_USD FROM Currency WHERE name_currency='{currency_name2.upper()}'")
-    if len(name_check1) != 0 and len(name_check2) != 0:
+    if not name_check1 or not name_check2:
+        return 'спробуйте корректно ввести назву валют, або валютної пари не існує'
+    else:
         result = get_data(f"""SELECT round(
         (SELECT cost_in_USD FROM Currency WHERE name_currency='{currency_name1.upper()}' AND 
         pricing_date=(SELECT max(pricing_date) FROM Currency WHERE name_currency='{currency_name1.upper()}'))/
         (SELECT cost_in_USD FROM Currency WHERE name_currency='{currency_name2.upper()}' AND 
         pricing_date=(SELECT max(pricing_date) FROM Currency WHERE name_currency='{currency_name2.upper()}')), 2)""")
         return f"За одну грошову одиницю {currency_name1.upper()}, ви заплатите {result}{currency_name2.upper()}"
-    else:
-        return 'спробуйте корректно ввести назву валют, або валютної пари не існує'
+
 
 
 @app.post('/currency/trade/<currency_name1>/<currency_name2>')    # операція обміну однієї валюти на другу
