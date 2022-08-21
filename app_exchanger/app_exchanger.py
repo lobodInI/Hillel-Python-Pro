@@ -129,7 +129,6 @@ def trade_exchange(currency_name1, currency_name2):
                                  WHERE id_currency={old_id_currency_user_buy[0]['id_currency']} 
                                  AND user_id='{user_id}'""")
 
-
         # сума у валюті, яку хоче купити юзер
         required_amount = round((info_currency1[0]['cost_in_USD']/info_currency2[0]['cost_in_USD'])*am_cur_exch, 2)
 
