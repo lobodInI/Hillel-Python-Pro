@@ -1,24 +1,39 @@
 from flask import Flask, request
 import sqlite3
-
+import datetime
 
 app = Flask(__name__)
+
+
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
+def get_data(query: str):
+    # with sqlite3.connect("databases_exchanger.db") as con:
+    #     con.row_factory = dict_factory
+    #     cursor = con.execute(query)
+    #     result = cursor.fetchall()
+    #     return result
+    con = sqlite3.connect("databases_exchanger.db")
+    con.row_factory = dict_factory
+    cursor = con.execute(query)
+    result = cursor.fetchall()
+    con.commit()
+    con.close()
+    return result
 
 @app.route('/')
 def hello_world():
     return 'world is amazing'
 
 
-def get_data(query: str):
-    with sqlite3.connect("databases_exchanger.db") as con:
-        cursor = con.execute(query)
-        result = cursor.fetchall()
-        return result
-
-
 @app.route('/currency')    # список всіх валют
 def all_currency():
-    result = get_data("SELECT name_currency, cost_in_USD, available_quantity FROM Currency")
+    result = get_data("SELECT name_currency, cost_in_USD, available_quantity, pricing_date FROM Currency")
     return result
 
 
@@ -26,10 +41,18 @@ def all_currency():
 def review_currency(currency_name):                                                    # відкуками конкретної валюти
     if request.method == 'DELETE':
         return f'DELETE a review for {currency_name} currency'
+
     elif request.method == 'POST':
-        return f'Create a review for {currency_name} currency'
+        request_data = request.get_json()
+        get_data(f"""INSERT INTO Review (id_currency, rating, review_client, date_review) 
+        VALUES ((SELECT id_currency FROM Currency 
+                 WHERE name_currency='{currency_name.upper()}' ORDER by pricing_date DESC LIMIT 1), 
+        '{request_data['rating']}', '{request_data['review_client']}', '{request_data['date_review']}')""")
+        return 'Data is recorded.'
+
     elif request.method == 'PUT':
         return f'Update a review for {currency_name} currency'
+
     else:
         result = get_data(f"""SELECT name_currency, rating, review_client, date_review 
         FROM Review JOIN Currency on Currency.id_currency=Review.id_currency 
@@ -57,18 +80,105 @@ def trade_get_ratio(currency_name1, currency_name2):
         return 'спробуйте корректно ввести назву валют, або валютної пари не існує'
     else:
         result = get_data(f"""SELECT round(
-        (SELECT cost_in_USD FROM Currency WHERE name_currency='{currency_name1.upper()}' AND 
-        pricing_date=(SELECT max(pricing_date) FROM Currency WHERE name_currency='{currency_name1.upper()}'))/
-        (SELECT cost_in_USD FROM Currency WHERE name_currency='{currency_name2.upper()}' AND 
-        pricing_date=(SELECT max(pricing_date) FROM Currency WHERE name_currency='{currency_name2.upper()}')), 2)""")
-        return f"За одну грошову одиницю {currency_name1.upper()}, ви заплатите {result}{currency_name2.upper()}"
-
+        (SELECT cost_in_USD FROM Currency 
+            WHERE name_currency='{currency_name1.upper()}' ORDER by pricing_date DESC LIMIT 1)/
+        (SELECT cost_in_USD FROM Currency 
+            WHERE name_currency='{currency_name2.upper()}' ORDER by pricing_date DESC LIMIT 1), 2) as exchange_rate""")
+        return f"За одну грошову одиницю {currency_name1.upper()}, " \
+               f"ви заплатите {result[0]['exchange_rate']} {currency_name2.upper()}"
 
 
 @app.post('/currency/trade/<currency_name1>/<currency_name2>')    # операція обміну однієї валюти на другу
 def trade_exchange(currency_name1, currency_name2):
+    user_login = request.get_json()['user_login']                 # вказуємо логін юзера у json
+    user_id = (get_data(f"""SELECT id FROM User WHERE login='{user_login}'"""))[0]['id']
+    am_cur_exch = request.get_json()['amount']                   # am_cur_exch = Amount of currency to exchange
 
-    return f"Exchange currency - {currency_name1}/{currency_name2}"
+    # звертаємось до данних в Account до логіну юзера, та назви валюти
+    check_balance_user = get_data(f"""SELECT balance FROM Account JOIN Currency, User 
+                        on Currency.id_currency=Account.id_currency AND User.id=Account.user_id 
+                        WHERE user_id='{user_id}' AND name_currency='{currency_name1.upper()}'""")[0]['balance']
+    # перевірка наявності валюти у юзера
+    if check_balance_user >= am_cur_exch:
+        # загальна актуальна інформація по валюту яку продає юзер
+        info_currency1 = get_data(f"""SELECT * FROM Currency WHERE name_currency='{currency_name1.upper()}'
+                                          ORDER by pricing_date DESC LIMIT 1""")
+        # загальна актуальна інформація по валюту яку продає юзер
+        info_currency2 = get_data(f"""SELECT * FROM Currency WHERE name_currency='{currency_name2.upper()}'
+                                              ORDER by pricing_date DESC LIMIT 1""")
+
+        # оновлення id валюти в Account у юзера,  яку юзер хоче продати
+        old_id_currency_user_cell = get_data(f"""SELECT Account.id_currency FROM Account JOIN Currency
+                        on Currency.id_currency=Account.id_currency WHERE name_currency='{currency_name1.upper()}'
+                        AND user_id='{user_id}'""")
+
+        get_data(f"""UPDATE Account SET id_currency={info_currency1[0]['id_currency']}
+                     WHERE id_currency={old_id_currency_user_cell[0]['id_currency']} AND user_id='{user_id}'""")
+
+        # оновлення id валюти в Account у юзера,  яку юзер хоче купити
+        old_id_currency_user_buy = get_data(f"""SELECT Account.id_currency FROM Account JOIN Currency
+                        on Currency.id_currency=Account.id_currency WHERE name_currency='{currency_name2.upper()}'
+                        AND user_id='{user_id}'""")
+
+        # перевірка чи є рахунок у валюті яку хоче купити юзер в Account
+        if not old_id_currency_user_buy:
+            get_data(f"""INSERT INTO Account (user_id, id_currency, balance) 
+                         VALUES ('{user_id}', '{info_currency2[0]['id_currency']}', 0)""")
+        else:
+            get_data(f"""UPDATE Account SET id_currency={info_currency2[0]['id_currency']}
+                                 WHERE id_currency={old_id_currency_user_buy[0]['id_currency']} 
+                                 AND user_id='{user_id}'""")
+
+
+        # сума у валюті, яку хоче купити юзер
+        required_amount = round((info_currency1[0]['cost_in_USD']/info_currency2[0]['cost_in_USD'])*am_cur_exch, 2)
+
+        if  required_amount <= info_currency2[0]['available_quantity']:
+
+            # оновлення доступної кількості валюти у одміннику, яку продає юзер
+            # не створюємо нову строку бо в теорії в нас кожен день оновлюєтться та сворюється строка валюти
+            get_data(f"""UPDATE Currency
+                         SET available_quantity={(info_currency1[0]['available_quantity']+am_cur_exch)},
+                            pricing_date='{datetime.datetime.now().strftime("%Y-%m-%d")}'
+                         WHERE id_currency='{info_currency1[0]['id_currency']}'""")
+
+            # оновлення доступної кількості валюти у одміннику, яку купує юзер
+            get_data(f"""UPDATE Currency
+                         SET available_quantity={(info_currency2[0]['available_quantity']-required_amount)},
+                            pricing_date='{datetime.datetime.now().strftime("%Y-%m-%d")}'
+                         WHERE id_currency={info_currency2[0]['id_currency']}""")
+
+            # оновлення кількості валюти у юзера яку продав
+            get_data(f"""UPDATE Account SET balance={check_balance_user-am_cur_exch} 
+                         WHERE user_id='{user_id}' AND id_currency='{info_currency1[0]['id_currency']}'""")
+
+            # баланс валюти яку хоче купити юзер, в Account у юзера
+            balance_user_currency2 = get_data(f"""SELECT balance FROM Account WHERE user_id='{user_id}' 
+                                                  AND id_currency='{info_currency2[0]['id_currency']}'""")
+
+            # оновлення кількості валюти у юзера яку купив
+            get_data(f"""UPDATE Account SET balance='{balance_user_currency2[0]['balance']+required_amount}'
+                         WHERE user_id='{user_id}' AND id_currency='{info_currency2[0]['id_currency']}'""")
+
+            # запис транзакції у таблицю
+            get_data(f"""INSERT INTO Transactions (user_id, type_operation, id_currency_output, id_currency_input,
+                                      count_currency_spent, count_currency_received, commission, id_account_output, 
+                                      id_account_input, date_operation)
+                        VALUES ('{user_id}', '{request.get_json()['type_operation']}', 
+                        '{info_currency1[0]['id_currency']}', '{info_currency2[0]['id_currency']}', 
+                        '{am_cur_exch}', '{required_amount}', 0, 
+                        (SELECT id FROM Account WHERE id_currency='{info_currency1[0]['id_currency']}' 
+                                                AND user_id='{user_id}'), 
+                        (SELECT id FROM Account WHERE id_currency='{info_currency2[0]['id_currency']}' 
+                                                AND user_id='{user_id}'), 
+                        '{datetime.datetime.now().strftime("%Y-%m-%d")}')""")
+
+            return "Операція обміну пройшла успішно"
+        else:
+            return "Недостатньо вказаної валюти у обміннику"
+    else:
+        return "Операція не можлива. Недостатньо коштів для проведення операції. " \
+               "Або вказані невірні дані"
 
 
 @app.route('/user/<login>')    # інформація про користувача
@@ -96,6 +206,7 @@ def user_transaction_history(login):
         return f'Дані про користувача {login} не знайдено'
     else:
         return result
+
 
 @app.route('/user/<login>/deposit')    # шнформфція про дипозит користувача
 def deposit_user(login):

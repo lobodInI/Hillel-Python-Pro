@@ -1,0 +1,8 @@
+POST http://127.0.0.1:5000/currency/trade/uah/gbp
+Content-Type: application/json
+
+{
+  "amount": 1250,
+  "user_login": "user2",
+  "type_operation": "exchange"
+}
