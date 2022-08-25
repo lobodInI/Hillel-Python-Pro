@@ -2,7 +2,7 @@ POST http://127.0.0.1:5000/currency/eur/review
 Content-Type: application/json
 
 {
-  "rating": 4.45,
+  "user_rating": 4.45,
   "review_client": "comment",
   "date_review": "2022-08-08"
 }
