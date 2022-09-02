@@ -7,6 +7,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///databases_exchanger.db'
 db.init_app(app)
 
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
@@ -27,6 +28,7 @@ def get_data(query: str):
     con.commit()
     con.close()
     return result
+
 
 @app.route('/')
 def hello_world():
@@ -56,7 +58,7 @@ def review_currency(currency_name):                                             
     elif request.method == 'POST':
         request_data = request.get_json()
         actual_date = datetime.now().strftime("%Y-%m-%d")
-        currency_info = Currency.query.filter_by(name_currency=currency_name.upper(),pricing_date=actual_date).first()
+        currency_info = Currency.query.filter_by(name_currency=currency_name.upper(), pricing_date=actual_date).first()
         if not currency_info:
             return "Ви не можете залишити відгук, бо такої валюти в обміннику не існує"
         else:
@@ -93,7 +95,7 @@ def trade_get_ratio(currency_name1, currency_name2):
     if not currency_name1_info or not currency_name2_info:
         return "Такої валютної пари не існує, валюта не оновлювалася тривалий час."
     else:
-        dict_trade_ratio = {'exchenge_rate':currency_name1_info.cost_in_USD/currency_name2_info.cost_in_USD}
+        dict_trade_ratio = {'exchenge_rate': currency_name1_info.cost_in_USD/currency_name2_info.cost_in_USD}
         return f"За одну грошову одиницю {currency_name1.upper()}, " \
                f"ви заплатите {round(dict_trade_ratio['exchenge_rate'], 2)} {currency_name2.upper()}"
 
