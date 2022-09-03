@@ -2,10 +2,13 @@ from flask import Flask, request
 import sqlite3
 from datetime import datetime
 from models import db, Account, Currency, Deposit, Review, Transactions, User
+from migrate import Migrate
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///databases_exchanger.db'
 db.init_app(app)
+migrate = Migrate(app, db, render_as_batch=True)
 
 
 def dict_factory(cursor, row):
