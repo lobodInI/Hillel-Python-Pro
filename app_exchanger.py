@@ -2,7 +2,7 @@ from flask import Flask, request
 import sqlite3
 from datetime import datetime
 from models import db, Account, Currency, Deposit, Review, Transactions, User
-from migrate import Migrate
+from flask_migrate import Migrate
 
 
 app = Flask(__name__)
@@ -200,5 +200,5 @@ def create_deposit(deposit_id):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
 

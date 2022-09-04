@@ -22,8 +22,6 @@ class Account(db.Model):
 
 
 class Currency(db.Model):
-    __tablename__ = "Currency"
-
     id_currency = db.Column(db.INTEGER, primary_key=True, nullable=False)
     name_currency = db.Column(db.TEXT, nullable=False)
     cost_in_USD = db.Column(db.REAL, nullable=False)
