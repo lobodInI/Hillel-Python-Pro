@@ -8,6 +8,7 @@ class Account(db.Model):
     user_id = db.Column(db.INTEGER, nullable=False)
     id_currency = db.Column(db.INTEGER, nullable=False)
     balance = db.Column(db.REAL, nullable=False)
+    date_open = db.Column(db.TEXT, nullable=False)
 
     def __repr__(self):
         return f'<Account {self.id}>'
