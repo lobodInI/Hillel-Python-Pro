@@ -1,8 +1,8 @@
-from flask import Flask, request
+import os
 import sqlite3
+from flask import Flask, request
 from datetime import datetime
 from models import db, Account, Currency, Deposit, Review, Transactions, User
-import os
 from flask_migrate import Migrate
 
 
