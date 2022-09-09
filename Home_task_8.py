@@ -26,6 +26,7 @@ def view_threads():
     interval_4 = ['750001', '999999']
 
     print('>>>>>>>>>>>>>>>>>>>>> START THREADS')
+
     time_start = time.time()
     test_1 = Thread(target=lucky_recount, args=(interval_1,))
     test_2 = Thread(target=lucky_recount, args=(interval_2,))
@@ -48,7 +49,9 @@ def view_multiprocess():
     interval_2 = ['250001', '500000']
     interval_3 = ['500001', '750000']
     interval_4 = ['750001', '999999']
+
     print('>>>>>>>>>>>>>>>>>>>>> START PROCESSES')
+
     time_start = time.time()
     test_5 = Process(target=lucky_recount, args=(interval_1,))
     test_6 = Process(target=lucky_recount, args=(interval_2,))
@@ -65,6 +68,7 @@ def view_multiprocess():
     time_end = time.time()
     print(f'{"-" * 50}\nЗагальний час пiдрахунку {time_end - time_start} секунди')
     print(f'\n{"*" * 50}')
+
 
 if __name__ == '__main__':
     view_threads()
