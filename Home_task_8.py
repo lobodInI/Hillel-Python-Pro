@@ -6,7 +6,7 @@ from threading import Thread
 def lucky_recount(interval):
     start_val = interval[0]
     count = 0
-    for itm in range(250001):
+    for itm in range(int(interval[0]), int(interval[1])+1):
         sum_one = int(interval[0][0]) + int(interval[0][1]) + int(interval[0][2])
         sum_two = int(interval[0][3]) + int(interval[0][4]) + int(interval[0][5])
         modify = int(interval[0]) + 1
