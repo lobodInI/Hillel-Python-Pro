@@ -1,8 +1,8 @@
-POST http://127.0.0.1:5000/currency/trade/ujah/usd
+POST http://127.0.0.1:5000/currency/trade/uah/usd
 Content-Type: application/json
 
 {
-  "amount": 500,
-  "user_id": "1",
-  "type_operation": "exchange"
+  "amount": 1000000,
+  "user_id": "22",
+  "type_operation": "currency exchange"
 }

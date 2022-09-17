@@ -1,14 +1,15 @@
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, INTEGER, REAL, TEXT
+from database import Base
 
-db = SQLAlchemy()
 
+class Account(Base):
+    __tablename__ = 'Account'
 
-class Account(db.Model):
-    id = db.Column(db.INTEGER, primary_key=True, nullable=False)
-    user_id = db.Column(db.INTEGER, nullable=False)
-    id_currency = db.Column(db.INTEGER, nullable=False)
-    balance = db.Column(db.REAL, nullable=False)
-    date_open = db.Column(db.TEXT, nullable=False)
+    id = Column(INTEGER, primary_key=True, nullable=False)
+    user_id = Column(INTEGER, nullable=False)
+    id_currency = Column(INTEGER, nullable=False)
+    balance = Column(REAL, nullable=False)
+    date_open = Column(TEXT, nullable=False)
 
     def __repr__(self):
         return f'<Account {self.id}>'
@@ -22,12 +23,14 @@ class Account(db.Model):
         }
 
 
-class Currency(db.Model):
-    id_currency = db.Column(db.INTEGER, primary_key=True, nullable=False)
-    name_currency = db.Column(db.TEXT, nullable=False)
-    cost_in_USD = db.Column(db.REAL, nullable=False)
-    available_quantity = db.Column(db.REAL, nullable=False)
-    pricing_date = db.Column(db.TEXT, nullable=False)
+class Currency(Base):
+    __tablename__ = 'Currency'
+
+    id_currency = Column(INTEGER, primary_key=True, nullable=False)
+    name_currency = Column(TEXT, nullable=False)
+    cost_in_USD = Column(REAL, nullable=False)
+    available_quantity = Column(REAL, nullable=False)
+    pricing_date = Column(TEXT, nullable=False)
 
     def __repr__(self):
         return f'<Currency {self.name_currency}>'
@@ -42,15 +45,17 @@ class Currency(db.Model):
         }
 
 
-class Deposit(db.Model):
-    id = db.Column(db.INTEGER, primary_key=True, nullable=False)
-    user_id = db.Column(db.INTEGER, nullable=False)
-    opening_date = db.Column(db.TEXT, nullable=False)
-    closing_date = db.Column(db.TEXT, nullable=False)
-    id_currency = db.Column(db.INTEGER, nullable=False)
-    balance = db.Column(db.REAL, nullable=False)
-    interest_rate = db.Column(db.INTEGER, nullable=False)
-    storage_conditions = db.Column(db.TEXT, nullable=False)
+class Deposit(Base):
+    __tablename__ = 'Deposit'
+
+    id = Column(INTEGER, primary_key=True, nullable=False)
+    user_id = Column(INTEGER, nullable=False)
+    opening_date = Column(TEXT, nullable=False)
+    closing_date = Column(TEXT, nullable=False)
+    id_currency = Column(INTEGER, nullable=False)
+    balance = Column(REAL, nullable=False)
+    interest_rate = Column(INTEGER, nullable=False)
+    storage_conditions = Column(TEXT, nullable=False)
 
     def __repr__(self):
         return f'<Deposit {self.id}>'
@@ -68,12 +73,14 @@ class Deposit(db.Model):
         }
 
 
-class Review(db.Model):
-    id = db.Column(db.INTEGER, primary_key=True, nullable=False)
-    id_currency = db.Column(db.INTEGER, nullable=False)
-    user_rating = db.Column(db.REAL, nullable=False)
-    review_client = db.Column(db.TEXT, nullable=False)
-    date_review = db.Column(db.TEXT, nullable=False)
+class Review(Base):
+    __tablename__ = 'Review'
+
+    id = Column(INTEGER, primary_key=True, nullable=False)
+    id_currency = Column(INTEGER, nullable=False)
+    user_rating = Column(REAL, nullable=False)
+    review_client = Column(TEXT, nullable=False)
+    date_review = Column(TEXT, nullable=False)
 
     def __repr__(self):
         return f'<Review {self.id}>'
@@ -88,18 +95,22 @@ class Review(db.Model):
         }
 
 
-class Transactions(db.Model):
-    id = db.Column(db.INTEGER, primary_key=True, nullable=False)
-    user_id = db.Column(db.INTEGER, nullable=False)
-    type_operation = db.Column(db.TEXT, nullable=False)
-    id_currency_output = db.Column(db.INTEGER, nullable=False)
-    id_currency_input = db.Column(db.INTEGER, nullable=False)
-    count_currency_spent = db.Column(db.REAL, nullable=False)
-    count_currency_received = db.Column(db.REAL, nullable=False)
-    commission = db.Column(db.REAL, nullable=False)
-    id_account_output = db.Column(db.INTEGER, nullable=False)
-    id_account_input = db.Column(db.INTEGER, nullable=False)
-    date_operation = db.Column(db.TEXT, nullable=False)
+class Transactions(Base):
+    __tablename__ = 'Transaction'
+
+    id = Column(INTEGER, primary_key=True, nullable=False)
+    user_id = Column(INTEGER, nullable=False)
+    type_operation = Column(TEXT, nullable=False)
+    id_currency_output = Column(INTEGER, nullable=False)
+    id_currency_input = Column(INTEGER, nullable=False)
+    count_currency_spent = Column(REAL, nullable=False)
+    count_currency_received = Column(REAL, nullable=False)
+    commission = Column(REAL, nullable=False)
+    id_account_output = Column(INTEGER, nullable=False)
+    id_account_input = Column(INTEGER, nullable=False)
+    date_operation = Column(TEXT, nullable=False)
+    id_operation = Column(TEXT, nullable=False)
+    status_operation = Column(TEXT, nullable=False)
 
     def __repr__(self):
         return f'<Transaction {self.id}, {self.user_id}>'
@@ -119,10 +130,12 @@ class Transactions(db.Model):
         }
 
 
-class User(db.Model):
-    id = db.Column(db.INTEGER, primary_key=True, nullable=False)
-    login = db.Column(db.TEXT, nullable=False)
-    password = db.Column(db.TEXT, nullable=False)
+class User(Base):
+    __tablename__ = 'User'
+
+    id = Column(INTEGER, primary_key=True, nullable=False)
+    login = Column(TEXT, nullable=False)
+    password = Column(TEXT, nullable=False)
 
     def __repr__(self):
         return f'<User {self.login}>'
