@@ -1,14 +1,31 @@
+import os
 import time
+import json
 import uuid
+import random
 import models
 import database
 
-from flask import Flask, request
+
 from datetime import datetime
 from celery_worker import task_trade
+from flask import Flask, request, session
 
 
 app = Flask(__name__)
+
+
+session_secret = os.environ.get('SESSION_SECRET')
+if not session_secret:
+    if not os.path.exists('session.secret'):
+        secret_file = open('session.secret', 'w')
+        secret_file.write(str(random.randint(10000000, 999999999)))
+        secret_file.close()
+    secret_file = open('session.secret')
+    session_secret = secret_file.read()
+    secret_file.close()
+
+app.secret_key = session_secret
 
 
 @app.route('/')
@@ -85,75 +102,187 @@ def trade_get_ratio(currency_name1, currency_name2):
                f"ви заплатите {round(dict_trade_ratio['exchenge_rate'], 2)} {currency_name2.upper()}"
 
 
-# @app.route('/test1')
-# def test():
-#     task_obj = task1.apply_async(args=[1, 2, 30, 400])
-#     return str(task_obj)
-
-
-@app.post('/currency/trade/<currency_name1>/<currency_name2>')    # операція обміну однієї валюти на другу
+@app.route('/currency/trade/<currency_name1>/<currency_name2>', methods=['GET', 'POST'])    # операція обміну однієї валюти на другу
 def trade_exchange(currency_name1, currency_name2):
     database.init_db()
-    user_id = int(request.get_json()['user_id'])
-    am_cur_exch = request.get_json()['amount']                   # am_cur_exch = Amount of currency to exchange
-    type_operation = request.get_json()['type_operation']
+    if request.method == 'GET':
+        if session.get('user_login') is not None:
+            return '''
+                <html>
+                <form method="post"
+          <div class="container">
+            <label for="uname"><b>amount_currency</b></label>
+            <input type="text" placeholder="Enter how many" name="amount_currency" required>
+            <button type="submit">Submit</button>
+          </div>
+        </form>
+                </html>
+                '''
+        else:
+            return 'Login first!!!'
 
-    uuid_transaction = uuid.uuid4()
-    actual_date = datetime.now().strftime("%Y-%m-%d")
-    new_transaction = models.Transactions(user_id=user_id,               # створення запису у таблиці транзакцій
-                                          type_operation=type_operation,
-                                          id_currency_output=0,
-                                          id_currency_input=0,
-                                          count_currency_spent=am_cur_exch,
-                                          count_currency_received=0,
-                                          commission=100,
-                                          id_account_output=0,
-                                          id_account_input=0,
-                                          date_operation=actual_date,
-                                          id_operation=uuid_transaction,
-                                          status_operation='In processing')
+    else:
+        user_login = session.get('user_login')
+        user_id = models.User.query.filter_by(login=user_login).first().id   # отримуємо ІД юзера через логін
+        am_cur_exch = float(request.form.get('amount_currency'))             # am_cur_exch = Amount of currency to exchange
 
-    database.db_session.add(new_transaction)
-    database.db_session.commit()
-    time.sleep(15)
-    task_obj = task_trade.apply_async(args=[user_id, currency_name1, currency_name2, am_cur_exch, uuid_transaction])
+        uuid_transaction = uuid.uuid4()
+        actual_date = datetime.now().strftime("%Y-%m-%d")
+        new_transaction = models.Transactions(user_id=user_id,               # створення запису у таблиці транзакцій
+                                              type_operation="currency exchange",
+                                              id_currency_output=0,
+                                              id_currency_input=0,
+                                              count_currency_spent=am_cur_exch,
+                                              count_currency_received=0,
+                                              commission=100,
+                                              id_account_output=0,
+                                              id_account_input=0,
+                                              date_operation=actual_date,
+                                              id_operation=uuid_transaction,
+                                              status_operation='In processing')
 
-    return 'Request was sent'
+        database.db_session.add(new_transaction)
+        database.db_session.commit()
+        # time.sleep(10)
+        task_obj = task_trade.apply_async(args=[user_id, currency_name1, currency_name2, am_cur_exch, uuid_transaction])
+
+        return 'Request was sent'
 
 
-
-@app.route('/user/<user_id>')
-def user_info(user_id):
+@app.route('/user', methods=['GET', 'POST'])
+def user_info():
     database.init_db()
-    account_info = models.Account.query.filter_by(user_id=user_id).all()
-    if not account_info:
-        return f'Дані про користувача з ID: {user_id} не знайдено'
+    if request.method == 'GET':
+        user_login = session.get('user_login')
+        if user_login is None:
+            return '''
+            <html>
+            <form method="post">
+  <div class="container">
+    <label for="uname"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="uname" required>
+
+    <label for="psw"><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="psw" required>
+
+    <button type="submit">Login</button>
+  </div>
+</form>
+            </html>
+            '''
+        else:
+            # account_info = models.Account.query.filter_by(user_id=user_login).all()
+            user_id = models.User.query.filter_by(login=user_login).first().id
+            account_info = models.Account.query.filter_by(user_id=user_id).all()
+            if not account_info:
+                return f'Дані про рахунки користувача з Логіном: {user_login} не знайдено'
+            else:
+                return [item.to_dict() for item in account_info]
     else:
-        return [item.to_dict() for item in account_info]
+        user_login = request.form.get('uname')
+        user_pasw = request.form.get('psw')
+        check_user_info = models.User.query.filter_by(login=user_login, password=user_pasw).first()
+        if check_user_info:
+            session['user_login'] = user_login
+            return 'Successful authorization'
+        else:
+            return 'Authorization error'
 
 
-@app.post('/user/transfer')    # переказ коштів
-def transfer_currency_user():
+@app.route('/user/history', methods=['GET', 'POST'])   # історія переказів користувача
+def history_info():
+    database.init_db()
+    if request.method == 'GET':
+        user_login = session.get('user_login')
+        if user_login is None:
+            return '''
+            <html>
+            <form method="post">
+  <div class="container">
+    <label for="uname"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="uname" required>
 
-    return "User currency transaction"
+    <label for="psw"><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="psw" required>
 
-
-@app.route('/user/<user_id>/history')    # історія переказів користувача
-def user_transaction_history(user_id):
-    transac_user_history = models.Transactions.query.filter_by(user_id=user_id).all()
-    if not transac_user_history:
-        return f'Дані про користувача з ID: {user_id} не знайдено'
+    <button type="submit">Login</button>
+  </div>
+</form>
+            </html>
+            '''
+        else:
+            user_id = models.User.query.filter_by(login=user_login).first().id
+            transaction_info = models.Transactions.query.filter_by(user_id=user_id).all()
+            if not transaction_info:
+                return f'Дані про транзакціі користувача з Логіном: {user_login} не знайдено'
+            else:
+                return [item.to_dict() for item in transaction_info]
     else:
-        return [item.to_dict() for item in transac_user_history]
+        user_login = request.form.get('uname')
+        user_pasw = request.form.get('psw')
+        check_user_info = models.User.query.filter_by(login=user_login, password=user_pasw).first()
+        if check_user_info:
+            session['user_login'] = user_login
+            return 'Successful authorization'
+        else:
+            return 'Authorization error'
 
 
-@app.route('/user/<user_id>/deposit')    # шнформфція про дипозит користувача
-def deposit_user(user_id):
-    deposit_info = models.Deposit.query.filter_by(user_id=user_id).all()
-    if not deposit_info:
-        return f'Дані про дипозит користувача з ID: {user_id} не знайдено'
+@app.route('/user/deposit', methods=['GET', 'POST'])   # iнформфція про дипозит користувача
+def deposit_user():
+    database.init_db()
+    if request.method == 'GET':
+        user_login = session.get('user_login')
+        if user_login is None:
+            return '''
+            <html>
+            <form method="post">
+  <div class="container">
+    <label for="uname"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="uname" required>
+
+    <label for="psw"><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="psw" required>
+
+    <button type="submit">Login</button>
+  </div>
+</form>
+            </html>
+            '''
+        else:
+            user_id = models.User.query.filter_by(login=user_login).first().id
+            deposit_info = models.Deposit.query.filter_by(user_id=user_id).all()
+            if not deposit_info:
+                return f'Дані про депозит користувача з Логіном: {user_login} не знайдено'
+            else:
+                return [item.to_dict() for item in deposit_info]
     else:
-        return [item.to_dict() for item in deposit_info]
+        user_login = request.form.get('uname')
+        user_pasw = request.form.get('psw')
+        check_user_info = models.User.query.filter_by(login=user_login, password=user_pasw).first()
+        if check_user_info:
+            session['user_login'] = user_login
+            return 'Successful authorization'
+        else:
+            return 'Authorization error'
+
+
+# @app.route('/user/<user_id>/history')    # історія переказів користувача
+# def user_transaction_history(user_id):
+#     transac_user_history = models.Transactions.query.filter_by(user_id=user_id).all()
+#     if not transac_user_history:
+#         return f'Дані про користувача з ID: {user_id} не знайдено'
+#     else:
+#         return [item.to_dict() for item in transac_user_history]
+
+
+# @app.route('/user/<user_id>/deposit')    # шнформфція про дипозит користувача
+# def deposit_user(user_id):
+#     deposit_info = models.Deposit.query.filter_by(user_id=user_id).all()
+#     if not deposit_info:
+#         return f'Дані про дипозит користувача з ID: {user_id} не знайдено'
+#     else:
+#         return [item.to_dict() for item in deposit_info]
 
 
 @app.teardown_appcontext

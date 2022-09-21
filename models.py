@@ -123,10 +123,13 @@ class Transactions(Base):
             'id_currency_output': self.id_currency_output,
             'id_currency_input': self.id_currency_input,
             'count_currency_spent': self.count_currency_spent,
+            'count_currency_received': self.count_currency_received,
             'commission': self.commission,
             'id_account_output': self.id_account_output,
             'id_account_input': self.id_account_input,
             'date_operation': self.date_operation,
+            'id_operation': self.id_operation,
+            'status_operation': self.status_operation
         }
 
 
